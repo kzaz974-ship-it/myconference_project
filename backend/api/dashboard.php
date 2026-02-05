@@ -4,10 +4,7 @@ header("Access-Control-Allow-Headers: Content-Type");
 header("Access-Control-Allow-Methods: POST, OPTIONS");
 header("Content-Type: application/json; charset=utf-8");
 
-if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") {
-  http_response_code(200);
-  exit();
-}
+if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") { http_response_code(200); exit(); }
 
 require_once __DIR__ . "/../config/db.php";
 
@@ -27,7 +24,6 @@ if ($userId <= 0) {
 }
 
 try {
-  // 1) user
   $stmt = $pdo->prepare("SELECT id_user, nom, prenom, email, role, affiliation, country FROM users WHERE id_user=?");
   $stmt->execute([$userId]);
   $user = $stmt->fetch();
@@ -38,20 +34,16 @@ try {
     exit();
   }
 
-  // 2) conferences list
   $confs = $pdo->query("SELECT id_conf, titre, description, date_debut, date_fin, created_by FROM conferences ORDER BY id_conf DESC LIMIT 20")->fetchAll();
 
-  // 3) my articles
   $stmt = $pdo->prepare("SELECT id_article, titre, statut, date_soumission, id_conf FROM articles WHERE id_author=? ORDER BY id_article DESC LIMIT 20");
   $stmt->execute([$userId]);
   $myArticles = $stmt->fetchAll();
 
-  // 4) my conferences (created by me)
   $stmt = $pdo->prepare("SELECT id_conf, titre, date_debut, date_fin FROM conferences WHERE created_by=? ORDER BY id_conf DESC LIMIT 20");
   $stmt->execute([$userId]);
   $myConfs = $stmt->fetchAll();
 
-  // 5) my registrations (participant)
   $stmt = $pdo->prepare("
     SELECT r.id_registration, c.id_conf, c.titre, c.date_debut, c.date_fin
     FROM registrations r
@@ -70,7 +62,6 @@ try {
     "myConferences" => $myConfs,
     "myRegistrations" => $myRegs
   ]);
-
 } catch (Exception $e) {
   http_response_code(500);
   echo json_encode(["success" => false, "message" => "Server error", "error" => $e->getMessage()]);

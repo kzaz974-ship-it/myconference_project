@@ -1,4 +1,11 @@
 <?php
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Headers: Content-Type");
+header("Access-Control-Allow-Methods: POST, OPTIONS");
+header("Content-Type: application/json; charset=utf-8");
+
+if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") { http_response_code(200); exit(); }
+
 require_once __DIR__ . "/../config/db.php";
 
 if ($_SERVER["REQUEST_METHOD"] !== "POST") {
@@ -7,55 +14,39 @@ if ($_SERVER["REQUEST_METHOD"] !== "POST") {
   exit();
 }
 
-$raw = file_get_contents("php://input");
-$data = json_decode($raw, true);
+$data = json_decode(file_get_contents("php://input"), true);
 
-if (!is_array($data)) {
-  http_response_code(400);
-  echo json_encode(["success" => false, "message" => "Invalid JSON"]);
-  exit();
-}
-
-$firstName   = trim($data["firstName"] ?? "");
-$lastName    = trim($data["lastName"] ?? "");
-$email       = trim($data["email"] ?? "");
-$password    = $data["password"] ?? "";
+$prenom = trim($data["prenom"] ?? "");
+$nom = trim($data["nom"] ?? "");
+$email = trim($data["email"] ?? "");
 $affiliation = trim($data["affiliation"] ?? "");
-$country     = trim($data["country"] ?? "");
+$country = trim($data["country"] ?? "");
+$password = $data["password"] ?? "";
+$role = $data["role"] ?? "author";
 
-if (!$firstName || !$lastName || !$email || !$password || !$affiliation || !$country) {
+if (!$prenom || !$nom || !$email || !$country || !$password) {
   http_response_code(400);
   echo json_encode(["success" => false, "message" => "Missing required fields"]);
   exit();
 }
 
-if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-  http_response_code(400);
-  echo json_encode(["success" => false, "message" => "Invalid email"]);
+$allowed = ["author", "reviewer", "chair"];
+if (!in_array($role, $allowed)) $role = "author";
+
+$stmt = $pdo->prepare("SELECT id_user FROM users WHERE email=? LIMIT 1");
+$stmt->execute([$email]);
+if ($stmt->fetch()) {
+  http_response_code(409);
+  echo json_encode(["success" => false, "message" => "Email already exists"]);
   exit();
 }
 
-try {
-  $stmt = $pdo->prepare("SELECT id_user FROM users WHERE email = ?");
-  $stmt->execute([$email]);
-  if ($stmt->fetch()) {
-    http_response_code(409);
-    echo json_encode(["success" => false, "message" => "Email already exists"]);
-    exit();
-  }
+$hash = password_hash($password, PASSWORD_BCRYPT);
 
-  $hash = password_hash($password, PASSWORD_BCRYPT);
-  $role = "author";
+$stmt = $pdo->prepare("
+  INSERT INTO users (nom, prenom, email, password, role, affiliation, country)
+  VALUES (?, ?, ?, ?, ?, ?, ?)
+");
+$stmt->execute([$nom, $prenom, $email, $hash, $role, $affiliation, $country]);
 
-  $stmt = $pdo->prepare("
-    INSERT INTO users (nom, prenom, email, password, role, affiliation, country)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  ");
-  $stmt->execute([$lastName, $firstName, $email, $hash, $role, $affiliation, $country]);
-
-  echo json_encode(["success" => true, "message" => "User created", "userId" => $pdo->lastInsertId()]);
-} catch (Exception $e) {
-  http_response_code(500);
-  echo json_encode(["success" => false, "message" => "Server error", "error" => $e->getMessage()]);
-}
-
+echo json_encode(["success" => true, "message" => "User created"]);

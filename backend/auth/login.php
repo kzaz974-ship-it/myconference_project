@@ -1,4 +1,11 @@
 <?php
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Headers: Content-Type");
+header("Access-Control-Allow-Methods: POST, OPTIONS");
+header("Content-Type: application/json; charset=utf-8");
+
+if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") { http_response_code(200); exit(); }
+
 require_once __DIR__ . "/../config/db.php";
 
 if ($_SERVER["REQUEST_METHOD"] !== "POST") {
@@ -17,24 +24,16 @@ if (!$email || !$password) {
   exit();
 }
 
-try {
-  $stmt = $pdo->prepare("SELECT id_user, nom, prenom, email, password, role, affiliation, country FROM users WHERE email=?");
-  $stmt->execute([$email]);
-  $user = $stmt->fetch();
+$stmt = $pdo->prepare("SELECT * FROM users WHERE email=? LIMIT 1");
+$stmt->execute([$email]);
+$user = $stmt->fetch();
 
-  if (!$user || !password_verify($password, $user["password"])) {
-    http_response_code(401);
-    echo json_encode(["success" => false, "message" => "Invalid credentials"]);
-    exit();
-  }
-
-  unset($user["password"]);
-
-  echo json_encode([
-    "success" => true,
-    "user" => $user
-  ]);
-} catch (Exception $e) {
-  http_response_code(500);
-  echo json_encode(["success" => false, "message" => "Server error", "error" => $e->getMessage()]);
+if (!$user || !password_verify($password, $user["password"])) {
+  http_response_code(401);
+  echo json_encode(["success" => false, "message" => "Invalid credentials"]);
+  exit();
 }
+
+unset($user["password"]);
+
+echo json_encode(["success" => true, "user" => $user]);

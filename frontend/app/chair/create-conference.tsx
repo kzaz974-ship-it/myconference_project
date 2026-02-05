@@ -1,12 +1,24 @@
 import React, { useState } from "react";
-import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import {
+  Alert,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
+import { API_URL } from "../../constants/api";
 
-const API_URL = "http://192.168.1.146/myconference_api";
+type User = {
+  id_user: number;
+  role: "author" | "reviewer" | "chair";
+};
 
 export default function CreateConference() {
   const router = useRouter();
+
   const [titre, setTitre] = useState("");
   const [description, setDescription] = useState("");
   const [dateDebut, setDateDebut] = useState("");
@@ -14,14 +26,29 @@ export default function CreateConference() {
   const [loading, setLoading] = useState(false);
 
   const submit = async () => {
-    if (!titre.trim()) return Alert.alert("Erreur", "Title is required");
+    if (!titre.trim()) {
+      return Alert.alert("Erreur", "Title is required");
+    }
+
     setLoading(true);
 
-    const saved = await AsyncStorage.getItem("user");
-    if (!saved) { setLoading(false); return router.replace("/login"); }
-    const u = JSON.parse(saved);
-
     try {
+      const saved = await AsyncStorage.getItem("user");
+
+      if (!saved) {
+        setLoading(false);
+        return router.replace("/login" as any);
+      }
+
+      const u = JSON.parse(saved) as User;
+
+      // ✅ Only organizer
+      if (u.role !== "chair") {
+        Alert.alert("Access denied", "Organizer only");
+        setLoading(false);
+        return;
+      }
+
       const res = await fetch(`${API_URL}/api/chair_create_conference.php`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -35,11 +62,18 @@ export default function CreateConference() {
       });
 
       const data = await res.json();
-      if (!data.success) return Alert.alert("Erreur", data.message || "Failed");
+
+      if (!data.success) {
+        return Alert.alert("Erreur", data.message || "Failed");
+      }
 
       Alert.alert("✅ Success", "Conference created");
-      router.back();
+
+      // ✅ رجوع ل Organizer dashboard
+      router.replace("/chair" as any);
+
     } catch (e) {
+      console.log(e);
       Alert.alert("Erreur", "Server not reachable");
     } finally {
       setLoading(false);
@@ -48,24 +82,78 @@ export default function CreateConference() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Create Conference</Text>
+      <Text style={styles.title}>➕ Create Conference</Text>
 
-      <TextInput style={styles.input} placeholder="Title" value={titre} onChangeText={setTitre} />
-      <TextInput style={[styles.input, { height: 90 }]} multiline placeholder="Description" value={description} onChangeText={setDescription} />
-      <TextInput style={styles.input} placeholder="Start date (YYYY-MM-DD)" value={dateDebut} onChangeText={setDateDebut} />
-      <TextInput style={styles.input} placeholder="End date (YYYY-MM-DD)" value={dateFin} onChangeText={setDateFin} />
+      <TextInput
+        style={styles.input}
+        placeholder="Title *"
+        value={titre}
+        onChangeText={setTitre}
+      />
 
-      <TouchableOpacity style={styles.btn} onPress={submit} disabled={loading}>
-        <Text style={styles.btnText}>{loading ? "Saving..." : "Create"}</Text>
+      <TextInput
+        style={[styles.input, { height: 90 }]}
+        multiline
+        placeholder="Description"
+        value={description}
+        onChangeText={setDescription}
+      />
+
+      <TextInput
+        style={styles.input}
+        placeholder="Start date (YYYY-MM-DD)"
+        value={dateDebut}
+        onChangeText={setDateDebut}
+      />
+
+      <TextInput
+        style={styles.input}
+        placeholder="End date (YYYY-MM-DD)"
+        value={dateFin}
+        onChangeText={setDateFin}
+      />
+
+      <TouchableOpacity
+        style={styles.btn}
+        onPress={submit}
+        disabled={loading}
+      >
+        <Text style={styles.btnText}>
+          {loading ? "Saving..." : "Create"}
+        </Text>
       </TouchableOpacity>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, backgroundColor: "#f5f7fa" },
-  title: { fontSize: 22, fontWeight: "900", marginBottom: 12 },
-  input: { backgroundColor: "#fff", borderWidth: 1, borderColor: "#eee", borderRadius: 12, padding: 12, marginTop: 10 },
-  btn: { backgroundColor: "#111", padding: 14, borderRadius: 12, marginTop: 14 },
-  btnText: { color: "#fff", textAlign: "center", fontWeight: "900" },
+  container: {
+    flex: 1,
+    padding: 16,
+    backgroundColor: "#f5f7fa",
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: "900",
+    marginBottom: 12,
+  },
+  input: {
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#eee",
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 10,
+  },
+  btn: {
+    backgroundColor: "#111",
+    padding: 14,
+    borderRadius: 12,
+    marginTop: 14,
+  },
+  btnText: {
+    color: "#fff",
+    textAlign: "center",
+    fontWeight: "900",
+  },
 });

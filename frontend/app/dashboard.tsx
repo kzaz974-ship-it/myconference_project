@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Alert,
   ScrollView,
@@ -8,9 +8,8 @@ import {
   View,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useRouter } from "expo-router";
-
-const API_URL = "http://192.168.1.146/myconference_api"; // بدلي IP ديالك
+import { useFocusEffect, useRouter } from "expo-router";
+import { API_URL } from "../constants/api";
 
 type User = {
   id_user: number;
@@ -40,7 +39,7 @@ export default function Dashboard() {
       const saved = await AsyncStorage.getItem("user");
 
       if (!saved) {
-        router.replace("/login");
+        router.replace("/login" as any);
         return;
       }
 
@@ -72,13 +71,21 @@ export default function Dashboard() {
     }
   };
 
+  // أول مرة
   useEffect(() => {
     load();
   }, []);
 
+  // كل مرة كترجعي للصفحة (بعد create conference مثلا)
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [])
+  );
+
   const logout = async () => {
-    await AsyncStorage.clear();
-    router.replace("/login");
+    await AsyncStorage.removeItem("user"); // ✅ ماشي clear
+    router.replace("/login" as any);
   };
 
   if (!user) return null;
@@ -131,57 +138,56 @@ export default function Dashboard() {
 
       {/* Quick actions */}
       <View style={styles.card}>
-  <Text style={styles.cardTitle}>🔵 Quick Actions</Text>
+        <Text style={styles.cardTitle}>🔵 Quick Actions</Text>
 
-  {/* Organizer (chair) */}
-  {user.role === "chair" && (
-    <TouchableOpacity
-      style={[styles.actionBtn, styles.chairBtn]}
-      onPress={() => router.push("/chair" as any)}
-    >
-      <Text style={[styles.actionText, styles.white]}>
-        🟠 Organizer Dashboard
-      </Text>
-    </TouchableOpacity>
-  )}
+        {/* Organizer (chair) */}
+        {user.role === "chair" && (
+          <TouchableOpacity
+            style={[styles.actionBtn, styles.chairBtn]}
+            onPress={() => router.push("/chair" as any)}
+          >
+            <Text style={[styles.actionText, styles.white]}>
+              🟠 Organizer Dashboard
+            </Text>
+          </TouchableOpacity>
+        )}
 
-  {/* Author */}
-  {user.role === "author" && (
-    <>
-      <TouchableOpacity
-        style={styles.actionBtn}
-        onPress={() => router.push("/articles/create" as any)}
-      >
-        <Text style={styles.actionText}>🟢 Create Article</Text>
-      </TouchableOpacity>
+        {/* Author */}
+        {user.role === "author" && (
+          <>
+            <TouchableOpacity
+              style={styles.actionBtn}
+              onPress={() => router.push("/articles/create" as any)}
+            >
+              <Text style={styles.actionText}>🟢 Create Article</Text>
+            </TouchableOpacity>
 
-      <TouchableOpacity
-        style={styles.actionBtn}
-        onPress={() => router.push("/conferences" as any)}
-      >
-        <Text style={styles.actionText}>🟢 View Conferences</Text>
-      </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.actionBtn}
+              onPress={() => router.push("/conferences" as any)}
+            >
+              <Text style={styles.actionText}>🟢 View Conferences</Text>
+            </TouchableOpacity>
 
-      <TouchableOpacity
-        style={styles.actionBtn}
-        onPress={() => router.push("/articles/mine" as any)}
-      >
-        <Text style={styles.actionText}>🟢 View My Submissions</Text>
-      </TouchableOpacity>
-    </>
-  )}
+            <TouchableOpacity
+              style={styles.actionBtn}
+              onPress={() => router.push("/articles/mine" as any)}
+            >
+              <Text style={styles.actionText}>🟢 View My Submissions</Text>
+            </TouchableOpacity>
+          </>
+        )}
 
-  {/* Reviewer (مؤقت) */}
-  {user.role === "reviewer" && (
-    <TouchableOpacity
-      style={styles.actionBtn}
-      onPress={() => Alert.alert("Soon", "Reviewer page next ✅")}
-    >
-      <Text style={styles.actionText}>🟣 My Assignments</Text>
-    </TouchableOpacity>
-  )}
-</View>
-
+        {/* Reviewer */}
+        {user.role === "reviewer" && (
+          <TouchableOpacity
+            style={styles.actionBtn}
+            onPress={() => Alert.alert("Soon", "Reviewer page next ✅")}
+          >
+            <Text style={styles.actionText}>🟣 My Assignments</Text>
+          </TouchableOpacity>
+        )}
+      </View>
 
       {/* My activity */}
       <View style={styles.card}>
@@ -202,7 +208,9 @@ export default function Dashboard() {
       <View style={styles.card}>
         <Text style={styles.cardTitle}>📌 Conferences</Text>
 
-        {conferences.length === 0 ? (
+        {loading ? (
+          <Text style={styles.emptyText}>Loading...</Text>
+        ) : conferences.length === 0 ? (
           <Text style={styles.emptyText}>No conferences yet.</Text>
         ) : (
           conferences.map((c) => (
