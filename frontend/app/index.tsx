@@ -39,7 +39,7 @@ export default function Index() {
 
       {/* IMAGE SECTION */}
       <ImageBackground
-        // ✅ بدّلي هاد السطر حسب الإسم الحقيقي ديال الصورة
+        
         source={require("../assets/images/conference.jpg")}
         style={styles.imageSection}
         imageStyle={{ borderRadius: 16 }}

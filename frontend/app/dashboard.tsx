@@ -136,58 +136,48 @@ export default function Dashboard() {
         </View>
       </View>
 
-      {/* Quick actions */}
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>🔵 Quick Actions</Text>
+    {/* Quick actions */}
+<View style={styles.card}>
+  <Text style={styles.cardTitle}>🔵 Quick Actions</Text>
 
-        {/* Organizer (chair) */}
-        {user.role === "chair" && (
-          <TouchableOpacity
-            style={[styles.actionBtn, styles.chairBtn]}
-            onPress={() => router.push("/chair" as any)}
-          >
-            <Text style={[styles.actionText, styles.white]}>
-              🟠 Organizer Dashboard
-            </Text>
-          </TouchableOpacity>
-        )}
+  {/* Author buttons */}
+  {user.role === "author" && (
+    <>
+      <TouchableOpacity
+        style={styles.actionBtn}
+        onPress={() => router.push("/articles/create" as any)}
+      >
+        <Text style={styles.actionText}>🟢 Create Article</Text>
+      </TouchableOpacity>
 
-        {/* Author */}
-        {user.role === "author" && (
-          <>
-            <TouchableOpacity
-              style={styles.actionBtn}
-              onPress={() => router.push("/articles/create" as any)}
-            >
-              <Text style={styles.actionText}>🟢 Create Article</Text>
-            </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.actionBtn}
+        onPress={() => router.push("/conferences" as any)}
+      >
+        <Text style={styles.actionText}>🟢 View Conferences</Text>
+      </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.actionBtn}
-              onPress={() => router.push("/conferences" as any)}
-            >
-              <Text style={styles.actionText}>🟢 View Conferences</Text>
-            </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.actionBtn}
+        onPress={() => router.push("/articles/mine" as any)}
+      >
+        <Text style={styles.actionText}>🟢 View My Submissions</Text>
+      </TouchableOpacity>
+    </>
+  )}
 
-            <TouchableOpacity
-              style={styles.actionBtn}
-              onPress={() => router.push("/articles/mine" as any)}
-            >
-              <Text style={styles.actionText}>🟢 View My Submissions</Text>
-            </TouchableOpacity>
-          </>
-        )}
-
-        {/* Reviewer */}
-        {user.role === "reviewer" && (
-          <TouchableOpacity
-            style={styles.actionBtn}
-            onPress={() => Alert.alert("Soon", "Reviewer page next ✅")}
-          >
-            <Text style={styles.actionText}>🟣 My Assignments</Text>
-          </TouchableOpacity>
-        )}
-      </View>
+  {/* Chair button */}
+  {user.role === "chair" && (
+    <TouchableOpacity
+      style={[styles.actionBtn, { backgroundColor: "#111" }]}
+      onPress={() => router.push("/chair" as any)}
+    >
+      <Text style={[styles.actionText, { color: "#fff" }]}>
+        🟠 Organizer Dashboard
+      </Text>
+    </TouchableOpacity>
+  )}
+</View>
 
       {/* My activity */}
       <View style={styles.card}>
