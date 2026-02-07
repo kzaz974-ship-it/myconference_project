@@ -97,6 +97,13 @@ export default function Dashboard() {
       ? "Reviewer"
       : "Author";
 
+  const roleText =
+    user.role === "chair"
+      ? "✅ Organizer → manage conferences"
+      : user.role === "reviewer"
+      ? "✅ Reviewer → review papers"
+      : "✅ Author → submit articles";
+
   return (
     <ScrollView style={styles.container}>
       {/* Header */}
@@ -120,64 +127,66 @@ export default function Dashboard() {
           Your role: <Text style={styles.bold}>{roleLabel}</Text>
         </Text>
 
+        {/* ✅ هنا يبان غير role واحد */}
         <View style={styles.roleRow}>
-          <RolePill
-            active={user.role === "author"}
-            text="✅ Author → submit articles"
-          />
-          <RolePill
-            active={user.role === "chair"}
-            text="✅ Organizer → manage conferences"
-          />
-          <RolePill
-            active={user.role === "reviewer"}
-            text="✅ Reviewer → review papers"
-          />
+          <RolePill text={roleText} />
         </View>
       </View>
 
-    {/* Quick actions */}
-<View style={styles.card}>
-  <Text style={styles.cardTitle}>🔵 Quick Actions</Text>
+      {/* Quick actions */}
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>🔵 Quick Actions</Text>
 
-  {/* Author buttons */}
-  {user.role === "author" && (
-    <>
-      <TouchableOpacity
-        style={styles.actionBtn}
-        onPress={() => router.push("/articles/create" as any)}
-      >
-        <Text style={styles.actionText}>🟢 Create Article</Text>
-      </TouchableOpacity>
+        {/* Author buttons */}
+        {user.role === "author" && (
+          <>
+            <TouchableOpacity
+              style={styles.actionBtn}
+              onPress={() => router.push("/articles/create" as any)}
+            >
+              <Text style={styles.actionText}>🟢 Create Article</Text>
+            </TouchableOpacity>
 
-      <TouchableOpacity
-        style={styles.actionBtn}
-        onPress={() => router.push("/conferences" as any)}
-      >
-        <Text style={styles.actionText}>🟢 View Conferences</Text>
-      </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.actionBtn}
+              onPress={() => router.push("/conferences" as any)}
+            >
+              <Text style={styles.actionText}>🟢 View Conferences</Text>
+            </TouchableOpacity>
 
-      <TouchableOpacity
-        style={styles.actionBtn}
-        onPress={() => router.push("/articles/mine" as any)}
-      >
-        <Text style={styles.actionText}>🟢 View My Submissions</Text>
-      </TouchableOpacity>
-    </>
-  )}
+            <TouchableOpacity
+              style={styles.actionBtn}
+              onPress={() => router.push("/articles/mine" as any)}
+            >
+              <Text style={styles.actionText}>🟢 View My Submissions</Text>
+            </TouchableOpacity>
+          </>
+        )}
 
-  {/* Chair button */}
-  {user.role === "chair" && (
-    <TouchableOpacity
-      style={[styles.actionBtn, { backgroundColor: "#111" }]}
-      onPress={() => router.push("/chair" as any)}
-    >
-      <Text style={[styles.actionText, { color: "#fff" }]}>
-        🟠 Organizer Dashboard
-      </Text>
-    </TouchableOpacity>
-  )}
-</View>
+        {/* Chair button */}
+        {user.role === "chair" && (
+          <TouchableOpacity
+            style={[styles.actionBtn, { backgroundColor: "#111" }]}
+            onPress={() => router.push("/chair" as any)}
+          >
+            <Text style={[styles.actionText, { color: "#fff" }]}>
+              🟠 Organizer Dashboard
+            </Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Reviewer buttons (اختياري: دابا خليه غير مثال) */}
+        {user.role === "reviewer" && (
+          <TouchableOpacity
+            style={[styles.actionBtn, { backgroundColor: "#2d6cdf" }]}
+            onPress={() => router.push("/reviewer" as any)}
+          >
+            <Text style={[styles.actionText, { color: "#fff" }]}>
+              🔵 Reviewer Dashboard
+            </Text>
+          </TouchableOpacity>
+        )}
+      </View>
 
       {/* My activity */}
       <View style={styles.card}>
@@ -219,17 +228,10 @@ export default function Dashboard() {
   );
 }
 
-function RolePill({ active, text }: { active: boolean; text: string }) {
+function RolePill({ text }: { text: string }) {
   return (
-    <View style={[styles.pill, active ? styles.pillActive : styles.pillOff]}>
-      <Text
-        style={[
-          styles.pillText,
-          active ? styles.pillTextActive : styles.pillTextOff,
-        ]}
-      >
-        {text}
-      </Text>
+    <View style={[styles.pill, styles.pillActive]}>
+      <Text style={[styles.pillText, styles.pillTextActive]}>{text}</Text>
     </View>
   );
 }
@@ -285,10 +287,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#4285F4",
   },
-  pillOff: { backgroundColor: "#f2f2f2" },
   pillText: { fontSize: 13 },
   pillTextActive: { color: "#1a1a1a", fontWeight: "700" },
-  pillTextOff: { color: "#666" },
 
   actionBtn: {
     backgroundColor: "#f4b400",
@@ -296,9 +296,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginTop: 10,
   },
-  chairBtn: { backgroundColor: "#111" },
   actionText: { fontWeight: "900", textAlign: "center", color: "#1a1a1a" },
-  white: { color: "#fff" },
 
   statRow: {
     flexDirection: "row",

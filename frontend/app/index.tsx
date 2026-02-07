@@ -94,4 +94,3 @@ const styles = StyleSheet.create({
   imageTitle: { color: "#fff", fontSize: 22, fontWeight: "bold", marginBottom: 8 },
   imageSubtitle: { color: "#e0e0e0", fontSize: 15, lineHeight: 22 },
 });
-
