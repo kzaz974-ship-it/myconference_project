@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   Alert,
   ScrollView,
@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect, useRouter } from "expo-router";
-import { API_URL } from "../constants/api";
+import { API_URL } from "@/constants/api";
 
 type User = {
   id_user: number;
@@ -71,12 +71,7 @@ export default function Dashboard() {
     }
   };
 
-  // أول مرة
-  useEffect(() => {
-    load();
-  }, []);
-
-  // كل مرة كترجعي للصفحة (بعد create conference مثلا)
+  // ✅ خليه غير هنا (باش يتعاود load كل مرة كترجعي للداشبورد)
   useFocusEffect(
     useCallback(() => {
       load();
@@ -84,7 +79,7 @@ export default function Dashboard() {
   );
 
   const logout = async () => {
-    await AsyncStorage.removeItem("user"); // ✅ ماشي clear
+    await AsyncStorage.removeItem("user");
     router.replace("/login" as any);
   };
 
@@ -127,7 +122,6 @@ export default function Dashboard() {
           Your role: <Text style={styles.bold}>{roleLabel}</Text>
         </Text>
 
-        {/* ✅ هنا يبان غير role واحد */}
         <View style={styles.roleRow}>
           <RolePill text={roleText} />
         </View>
@@ -137,7 +131,7 @@ export default function Dashboard() {
       <View style={styles.card}>
         <Text style={styles.cardTitle}>🔵 Quick Actions</Text>
 
-        {/* Author buttons */}
+        {/* Author */}
         {user.role === "author" && (
           <>
             <TouchableOpacity
@@ -163,28 +157,52 @@ export default function Dashboard() {
           </>
         )}
 
-        {/* Chair button */}
+        {/* Chair */}
         {user.role === "chair" && (
-          <TouchableOpacity
-            style={[styles.actionBtn, { backgroundColor: "#111" }]}
-            onPress={() => router.push("/chair" as any)}
-          >
-            <Text style={[styles.actionText, { color: "#fff" }]}>
-              🟠 Organizer Dashboard
-            </Text>
-          </TouchableOpacity>
+          <>
+            <TouchableOpacity
+              style={[styles.actionBtn, { backgroundColor: "#111" }]}
+              onPress={() => router.push("/chair" as any)}
+            >
+              <Text style={[styles.actionText, { color: "#fff" }]}>
+                🟠 Organizer Dashboard
+              </Text>
+            </TouchableOpacity>
+
+            {/* اختياري: shortcut ل create reviewer */}
+            <TouchableOpacity
+              style={[styles.actionBtn, { backgroundColor: "#444" }]}
+              onPress={() => router.push("/chair/create-reviewer" as any)}
+            >
+              <Text style={[styles.actionText, { color: "#fff" }]}>
+                ➕ Create Reviewer
+              </Text>
+            </TouchableOpacity>
+          </>
         )}
 
-        {/* Reviewer buttons (اختياري: دابا خليه غير مثال) */}
+        {/* Reviewer */}
         {user.role === "reviewer" && (
-          <TouchableOpacity
-            style={[styles.actionBtn, { backgroundColor: "#2d6cdf" }]}
-            onPress={() => router.push("/reviewer" as any)}
-          >
-            <Text style={[styles.actionText, { color: "#fff" }]}>
-              🔵 Reviewer Dashboard
-            </Text>
-          </TouchableOpacity>
+          <>
+            <TouchableOpacity
+              style={[styles.actionBtn, { backgroundColor: "#2d6cdf" }]}
+              onPress={() => router.push("/reviewer" as any)}
+            >
+              <Text style={[styles.actionText, { color: "#fff" }]}>
+                🔵 Reviewer Dashboard
+              </Text>
+            </TouchableOpacity>
+
+            {/* shortcut ل write reviews */}
+            <TouchableOpacity
+              style={[styles.actionBtn, { backgroundColor: "#1e88e5" }]}
+              onPress={() => router.push("/reviewer" as any)}
+            >
+              <Text style={[styles.actionText, { color: "#fff" }]}>
+                📄 My Assignments
+              </Text>
+            </TouchableOpacity>
+          </>
         )}
       </View>
 
@@ -196,7 +214,7 @@ export default function Dashboard() {
         <StatRow label="🎤 My Conferences" value={myConfs.length} />
         <StatRow label="📅 Registered Conferences" value={myRegs.length} />
 
-        {myArticles.length === 0 && (
+        {myArticles.length === 0 && user.role === "author" && (
           <Text style={styles.emptyText}>
             You haven’t created any articles yet.
           </Text>

@@ -12,8 +12,7 @@ import {
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
-
-const API_URL = "http://127.0.0.1/myconference_project/backend";
+import { API_URL } from "@/constants/api";
 
 type Conf = {
   id_conf: number;
@@ -38,31 +37,25 @@ export default function CreateArticle() {
   const loadConfs = async () => {
     setLoadingConfs(true);
     try {
-      const res = await fetch(`${API_URL}/api/conferences/index.php`);
-      const text = await res.text();
+      // ✅ correct endpoint
+      const res = await fetch(`${API_URL}/api/conferences_list.php`, {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      });
 
-      let data: any = null;
-      try {
-        data = JSON.parse(text);
-      } catch {
-        console.log("Confs not JSON:", text);
+      const data = await res.json();
+
+      if (!data?.success) {
         setConfs([]);
         return;
       }
 
-      // ✅ احتمالات رجوع الداتا
-      // 1) array مباشرة
-      // 2) object فيه conferences
-      const list = Array.isArray(data)
-        ? data
-        : Array.isArray(data?.conferences)
-        ? data.conferences
-        : [];
+      const list = Array.isArray(data?.conferences) ? data.conferences : [];
 
       const cleaned: Conf[] = list
         .map((x: any) => ({
-          id_conf: Number(x.id_conf ?? x.id ?? x.id_conf),
-          titre: String(x.titre ?? x.title ?? ""),
+          id_conf: Number(x.id_conf),
+          titre: String(x.titre ?? ""),
         }))
         .filter((x: Conf) => x.id_conf && x.titre);
 
@@ -70,6 +63,7 @@ export default function CreateArticle() {
 
       // default select first
       if (cleaned.length > 0) setConfId(cleaned[0].id_conf);
+      else setConfId(null);
     } catch (e) {
       console.log(e);
       setConfs([]);
@@ -122,17 +116,18 @@ export default function CreateArticle() {
       });
 
       const text = await res.text();
-      let data: any = null;
+      let out: any = null;
+
       try {
-        data = JSON.parse(text);
+        out = JSON.parse(text);
       } catch {
         console.log("create article not json:", text);
         Alert.alert("Erreur", "Server response not JSON (check console)");
         return;
       }
 
-      if (!data.success) {
-        Alert.alert("Erreur", data.message || "Failed");
+      if (!out.success) {
+        Alert.alert("Erreur", out.message || "Failed");
         return;
       }
 
@@ -160,11 +155,10 @@ export default function CreateArticle() {
           </View>
         ) : confs.length === 0 ? (
           <Text style={styles.error}>
-            No conferences found. (API not returning list)
+            No conferences found. (Create a conference as Chair first)
           </Text>
         ) : (
           <View>
-            {/* اختيار بسيط: كليكي على اسم الكونفرنس باش تبدلي */}
             {confs.map((c) => (
               <TouchableOpacity
                 key={c.id_conf}
@@ -209,7 +203,6 @@ export default function CreateArticle() {
           onChangeText={setAbstract}
         />
 
-        {/* PDF picker - web only */}
         {Platform.OS === "web" && (
           <View style={{ marginTop: 10 }}>
             <Text style={styles.label}>PDF</Text>

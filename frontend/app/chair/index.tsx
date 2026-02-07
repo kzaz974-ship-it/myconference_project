@@ -84,13 +84,20 @@ export default function ChairDashboard() {
 
       {/* Top Actions */}
       <View style={styles.actionsRow}>
-        <TouchableOpacity
-          style={styles.primaryBtn}
-          onPress={() => router.push("/chair/create-conference" as any)}
-        >
-          <Text style={styles.primaryText}>➕ Create Conference</Text>
-        </TouchableOpacity>
-      </View>
+  <TouchableOpacity
+    style={styles.primaryBtn}
+    onPress={() => router.push("/chair/create-conference" as any)}
+  >
+    <Text style={styles.primaryText}>➕ Create Conference</Text>
+  </TouchableOpacity>
+
+  <TouchableOpacity
+    style={[styles.primaryBtn, { marginTop: 10 }]}
+    onPress={() => router.push("/chair/create-reviewer" as any)}
+  >
+    <Text style={styles.primaryText}>➕ Add Reviewer</Text>
+  </TouchableOpacity>
+</View>
 
       {/* Stats */}
       <View style={styles.statsRow}>
