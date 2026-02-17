@@ -1,6 +1,6 @@
 import { Platform } from "react-native";
 
-const LAN_IP = "192.168.1.146"; // بدّليه ل IP ديال PC ديالك
+const LAN_IP = "192.168.1.146"; 
 
 export const API_URL =
   Platform.OS === "web"

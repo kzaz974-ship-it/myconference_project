@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { useLocalSearchParams } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { router } from "expo-router";
 import { API_URL } from "@/constants/api";
 
 type User = { id_user: number; role: "author" | "reviewer" | "chair" };
@@ -9,14 +9,19 @@ type User = { id_user: number; role: "author" | "reviewer" | "chair" };
 type Article = {
   id_article: number;
   titre: string;
-  statut: "soumis" | "en_review" | "accepte" | "rejete";
+  statut: string;
   date_soumission: string;
-  conf_titre: string | null;
+  author_prenom?: string;
+  author_nom?: string;
+  author_email?: string;
 };
 
-export default function MySubmissions() {
-  const [items, setItems] = useState<Article[]>([]);
+export default function SubmissionsPage() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const confId = Number(id);
+
   const [loading, setLoading] = useState(true);
+  const [articles, setArticles] = useState<Article[]>([]);
 
   const load = async () => {
     setLoading(true);
@@ -25,23 +30,22 @@ export default function MySubmissions() {
       if (!saved) return;
       const u = JSON.parse(saved) as User;
 
-      if (u.role !== "author") {
-        Alert.alert("Access denied", "Author only");
+      if (u.role !== "chair") {
+        Alert.alert("Access denied", "Organizer only");
         return;
       }
 
-      const res = await fetch(`${API_URL}/api/author_articles.php`, {
+      const res = await fetch(`${API_URL}/api/chair_articles_by_conf.php`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ authorId: u.id_user }),
+        body: JSON.stringify({ confId }),
       });
-
       const data = await res.json();
       if (!data.success) {
         Alert.alert("Erreur", data.message || "Failed");
-        setItems([]);
+        setArticles([]);
       } else {
-        setItems(data.articles || []);
+        setArticles(data.articles || []);
       }
     } catch (e) {
       console.log(e);
@@ -51,53 +55,39 @@ export default function MySubmissions() {
     }
   };
 
-  useEffect(() => { load(); }, []);
-
-  const badgeColor = (s: string) => {
-    if (s === "accepte") return "#16a34a";
-    if (s === "rejete") return "#dc2626";
-    if (s === "en_review") return "#2563eb";
-    return "#6b7280"; // soumis
-  };
+  useEffect(() => {
+    if (confId > 0) load();
+  }, [confId]);
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: "#f5f7fa" }} contentContainerStyle={{ padding: 16 }}>
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-        <Text style={{ fontSize: 22, fontWeight: "900" }}>📄 My Submissions</Text>
+        <Text style={{ fontSize: 22, fontWeight: "900" }}>📄 Submissions</Text>
         <TouchableOpacity onPress={load} style={{ backgroundColor: "#111", padding: 10, borderRadius: 12 }}>
           <Text style={{ color: "white", fontWeight: "900" }}>Refresh</Text>
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity
-        onPress={() => router.push("/articles/create" as any)}
-        style={{ backgroundColor: "#fbbf24", padding: 14, borderRadius: 14, marginTop: 12, alignItems: "center" }}
-      >
-        <Text style={{ fontWeight: "900" }}>➕ Create New Article</Text>
-      </TouchableOpacity>
+      <Text style={{ color: "#666", marginTop: 8 }}>Conference ID: {confId}</Text>
 
       {loading ? (
         <Text style={{ marginTop: 14, color: "#666" }}>Loading...</Text>
-      ) : items.length === 0 ? (
+      ) : articles.length === 0 ? (
         <Text style={{ marginTop: 14, color: "#666" }}>No submissions yet.</Text>
       ) : (
-        items.map((a) => (
-          <View
-            key={a.id_article}
-            style={{ backgroundColor: "#fff", borderRadius: 16, padding: 16, marginTop: 12, borderWidth: 1, borderColor: "#eee" }}
-          >
+        articles.map((a) => (
+          <View key={a.id_article} style={{ backgroundColor: "#fff", borderRadius: 16, padding: 16, marginTop: 12, borderWidth: 1, borderColor: "#eee" }}>
             <Text style={{ fontWeight: "900", fontSize: 16 }}>{a.titre}</Text>
-            <Text style={{ marginTop: 6, color: "#666" }}>Conference: {a.conf_titre || "-"}</Text>
-            <Text style={{ marginTop: 6, color: "#666" }}>Submitted at: {a.date_soumission}</Text>
-
-            <View style={{ marginTop: 10, alignSelf: "flex-start", paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: badgeColor(a.statut) }}>
-              <Text style={{ color: "white", fontWeight: "900" }}>{a.statut}</Text>
-            </View>
+            <Text style={{ marginTop: 8, color: "#666" }}>Status: {a.statut}</Text>
+            <Text style={{ marginTop: 6, color: "#666" }}>Date: {a.date_soumission}</Text>
+            <Text style={{ marginTop: 6, color: "#666" }}>
+              Author: {a.author_prenom} {a.author_nom} ({a.author_email})
+            </Text>
           </View>
         ))
       )}
-
       <View style={{ height: 30 }} />
     </ScrollView>
   );
 }
+

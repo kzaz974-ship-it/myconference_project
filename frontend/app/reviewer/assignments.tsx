@@ -6,16 +6,19 @@ import { API_URL } from "@/constants/api";
 
 type User = { id_user: number; role: "author" | "reviewer" | "chair" };
 
-type Article = {
+type Assignment = {
+  id_assignment: number;
+  assignment_status: string;
+  assigned_at: string;
   id_article: number;
   titre: string;
-  statut: "soumis" | "en_review" | "accepte" | "rejete";
-  date_soumission: string;
-  conf_titre: string | null;
+  statut: string;
+  id_conf: number;
+  conf_titre: string;
 };
 
-export default function MySubmissions() {
-  const [items, setItems] = useState<Article[]>([]);
+export default function ReviewerAssignments() {
+  const [items, setItems] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = async () => {
@@ -25,15 +28,15 @@ export default function MySubmissions() {
       if (!saved) return;
       const u = JSON.parse(saved) as User;
 
-      if (u.role !== "author") {
-        Alert.alert("Access denied", "Author only");
+      if (u.role !== "reviewer") {
+        Alert.alert("Access denied", "Reviewer only");
         return;
       }
 
-      const res = await fetch(`${API_URL}/api/author_articles.php`, {
+      const res = await fetch(`${API_URL}/api/reviewer_assignments.php`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ authorId: u.id_user }),
+        body: JSON.stringify({ reviewerId: u.id_user }),
       });
 
       const data = await res.json();
@@ -41,7 +44,7 @@ export default function MySubmissions() {
         Alert.alert("Erreur", data.message || "Failed");
         setItems([]);
       } else {
-        setItems(data.articles || []);
+        setItems(data.assignments || []);
       }
     } catch (e) {
       console.log(e);
@@ -53,47 +56,39 @@ export default function MySubmissions() {
 
   useEffect(() => { load(); }, []);
 
-  const badgeColor = (s: string) => {
-    if (s === "accepte") return "#16a34a";
-    if (s === "rejete") return "#dc2626";
-    if (s === "en_review") return "#2563eb";
-    return "#6b7280"; // soumis
-  };
-
   return (
     <ScrollView style={{ flex: 1, backgroundColor: "#f5f7fa" }} contentContainerStyle={{ padding: 16 }}>
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-        <Text style={{ fontSize: 22, fontWeight: "900" }}>📄 My Submissions</Text>
+        <Text style={{ fontSize: 22, fontWeight: "900" }}>📌 My Assignments</Text>
         <TouchableOpacity onPress={load} style={{ backgroundColor: "#111", padding: 10, borderRadius: 12 }}>
           <Text style={{ color: "white", fontWeight: "900" }}>Refresh</Text>
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity
-        onPress={() => router.push("/articles/create" as any)}
-        style={{ backgroundColor: "#fbbf24", padding: 14, borderRadius: 14, marginTop: 12, alignItems: "center" }}
-      >
-        <Text style={{ fontWeight: "900" }}>➕ Create New Article</Text>
-      </TouchableOpacity>
-
       {loading ? (
         <Text style={{ marginTop: 14, color: "#666" }}>Loading...</Text>
       ) : items.length === 0 ? (
-        <Text style={{ marginTop: 14, color: "#666" }}>No submissions yet.</Text>
+        <Text style={{ marginTop: 14, color: "#666" }}>No assigned articles yet.</Text>
       ) : (
         items.map((a) => (
-          <View
-            key={a.id_article}
+          <TouchableOpacity
+            key={a.id_assignment}
+            onPress={() =>
+  router.push({
+    pathname: "/reviewer/review/[id]" as const,
+    params: { id: String(a.id_article) },
+  })
+}
+
             style={{ backgroundColor: "#fff", borderRadius: 16, padding: 16, marginTop: 12, borderWidth: 1, borderColor: "#eee" }}
           >
             <Text style={{ fontWeight: "900", fontSize: 16 }}>{a.titre}</Text>
-            <Text style={{ marginTop: 6, color: "#666" }}>Conference: {a.conf_titre || "-"}</Text>
-            <Text style={{ marginTop: 6, color: "#666" }}>Submitted at: {a.date_soumission}</Text>
-
-            <View style={{ marginTop: 10, alignSelf: "flex-start", paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: badgeColor(a.statut) }}>
-              <Text style={{ color: "white", fontWeight: "900" }}>{a.statut}</Text>
-            </View>
-          </View>
+            <Text style={{ marginTop: 6, color: "#666" }}>Conference: {a.conf_titre}</Text>
+            <Text style={{ marginTop: 6, color: "#666" }}>Article status: {a.statut}</Text>
+            <Text style={{ marginTop: 6, color: "#666" }}>Assignment status: {a.assignment_status}</Text>
+            <Text style={{ marginTop: 6, color: "#666" }}>Assigned at: {a.assigned_at}</Text>
+            <Text style={{ marginTop: 10, fontWeight: "900" }}>➡️ Open review form</Text>
+          </TouchableOpacity>
         ))
       )}
 

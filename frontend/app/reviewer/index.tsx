@@ -1,53 +1,61 @@
 import React, { useEffect, useState } from "react";
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Alert, ScrollView, Text, TouchableOpacity, View, Linking } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useRouter } from "expo-router";
+import { router } from "expo-router";
 import { API_URL } from "@/constants/api";
 
-type User = { id_user: number; role: "author" | "reviewer" | "chair"; prenom?: string };
+type User = { id_user: number; role: "author" | "reviewer" | "chair" };
 
-type AssignmentItem = {
+type Assignment = {
+  id_assignment: number;
+  assignment_status: string;
+  assigned_at: string;
+
   id_article: number;
   titre: string;
-  statut?: string;
-  id_conf?: number;
-  date_soumission?: string;
+  statut: string;
+  date_soumission: string;
+
+  id_conf: number;
+  conf_titre: string;
+
+  author_prenom: string;
+  author_nom: string;
+  author_email: string;
+
+  fichier_pdf: string | null;
+  pdf_url: string | null;
 };
 
-export default function ReviewerHome() {
-  const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
-  const [items, setItems] = useState<AssignmentItem[]>([]);
+export default function ReviewerDashboard() {
+  const [items, setItems] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = async () => {
     setLoading(true);
     try {
       const saved = await AsyncStorage.getItem("user");
-      if (!saved) return router.replace("/login" as any);
+      if (!saved) return;
 
       const u = JSON.parse(saved) as User;
-      setUser(u);
-
       if (u.role !== "reviewer") {
         Alert.alert("Access denied", "Reviewer only");
-        return router.replace("/dashboard" as any);
+        return;
       }
 
       const res = await fetch(`${API_URL}/api/reviewer_assignments.php`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: u.id_user }),
+        body: JSON.stringify({ reviewerId: u.id_user }),
       });
 
       const data = await res.json();
       if (!data.success) {
         Alert.alert("Erreur", data.message || "Failed");
         setItems([]);
-        return;
+      } else {
+        setItems(data.assignments || []);
       }
-
-      setItems(data.articles || data.assignments || []);
     } catch (e) {
       console.log(e);
       Alert.alert("Erreur", "Server not reachable");
@@ -56,35 +64,96 @@ export default function ReviewerHome() {
     }
   };
 
-  useEffect(() => {
-    load();
-  }, []);
+  useEffect(() => { load(); }, []);
+
+  const openPdf = async (url: string | null) => {
+    if (!url) {
+      Alert.alert("PDF", "No PDF for this article");
+      return;
+    }
+    const ok = await Linking.canOpenURL(url);
+    if (!ok) {
+      Alert.alert("PDF", "Cannot open PDF URL");
+      return;
+    }
+    Linking.openURL(url);
+  };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ padding: 16 }}>
-      <View style={styles.header}>
-        <Text style={styles.title}>🧑‍⚖️ Reviewer Dashboard</Text>
-        <TouchableOpacity style={styles.btn} onPress={load}>
-          <Text style={styles.btnText}>Refresh</Text>
+    <ScrollView style={{ flex: 1, backgroundColor: "#f5f7fa" }} contentContainerStyle={{ padding: 16 }}>
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+        <Text style={{ fontSize: 22, fontWeight: "900" }}>📚 Reviewer Dashboard</Text>
+        <TouchableOpacity onPress={load} style={{ backgroundColor: "#111", padding: 10, borderRadius: 12 }}>
+          <Text style={{ color: "white", fontWeight: "900" }}>Refresh</Text>
         </TouchableOpacity>
       </View>
 
       {loading ? (
-        <Text style={styles.muted}>Loading...</Text>
+        <Text style={{ marginTop: 14, color: "#666" }}>Loading...</Text>
       ) : items.length === 0 ? (
-        <Text style={styles.muted}>No assigned articles yet.</Text>
+        <Text style={{ marginTop: 14, color: "#666" }}>No assigned articles yet.</Text>
       ) : (
         items.map((a) => (
-          <View key={a.id_article} style={styles.card}>
-            <Text style={styles.cardTitle}>{a.titre}</Text>
-            <Text style={styles.muted}>Status: {a.statut || "—"}</Text>
+          <View
+            key={a.id_assignment}
+            style={{
+              backgroundColor: "#fff",
+              borderRadius: 16,
+              padding: 16,
+              marginTop: 12,
+              borderWidth: 1,
+              borderColor: "#eee",
+            }}
+          >
+            <Text style={{ fontWeight: "900", fontSize: 16 }}>{a.titre}</Text>
 
-            <TouchableOpacity
-              style={[styles.btn, { marginTop: 10 }]}
-              onPress={() => router.push(`/reviewer/review/${a.id_article}` as any)}
-            >
-              <Text style={styles.btnText}>✍️ Write Review</Text>
-            </TouchableOpacity>
+            <Text style={{ marginTop: 8, color: "#666" }}>
+              Conference: <Text style={{ fontWeight: "800", color: "#111" }}>{a.conf_titre}</Text>
+            </Text>
+
+            <Text style={{ marginTop: 6, color: "#666" }}>
+              Author: <Text style={{ fontWeight: "800", color: "#111" }}>
+                {a.author_prenom} {a.author_nom}
+              </Text>{" "}
+              ({a.author_email})
+            </Text>
+
+            <Text style={{ marginTop: 6, color: "#666" }}>Assigned at: {a.assigned_at}</Text>
+            <Text style={{ marginTop: 6, color: "#666" }}>Assignment status: {a.assignment_status}</Text>
+            <Text style={{ marginTop: 6, color: "#666" }}>Article status: {a.statut}</Text>
+
+            <View style={{ flexDirection: "row", gap: 10, marginTop: 14 }}>
+              <TouchableOpacity
+                onPress={() => openPdf(a.pdf_url)}
+                style={{
+                  backgroundColor: a.pdf_url ? "#0b5" : "#aaa",
+                  paddingVertical: 10,
+                  paddingHorizontal: 14,
+                  borderRadius: 12,
+                }}
+              >
+                <Text style={{ color: "white", fontWeight: "900" }}>
+                  {a.pdf_url ? "Open PDF" : "No PDF"}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() =>
+                  router.push({
+                    pathname: "/reviewer/review/[id]" as const,
+                    params: { id: String(a.id_article) },
+                  })
+                }
+                style={{
+                  backgroundColor: "#111",
+                  paddingVertical: 10,
+                  paddingHorizontal: 14,
+                  borderRadius: 12,
+                }}
+              >
+                <Text style={{ color: "white", fontWeight: "900" }}>✍️ Review</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         ))
       )}
@@ -93,16 +162,3 @@ export default function ReviewerHome() {
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f5f7fa" },
-  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
-  title: { fontSize: 22, fontWeight: "900" },
-  muted: { color: "#666", marginTop: 10 },
-
-  card: { backgroundColor: "#fff", borderRadius: 16, padding: 16, borderWidth: 1, borderColor: "#eee", marginTop: 12 },
-  cardTitle: { fontSize: 16, fontWeight: "900" },
-
-  btn: { backgroundColor: "#111", paddingHorizontal: 12, paddingVertical: 10, borderRadius: 12 },
-  btnText: { color: "#fff", fontWeight: "800", textAlign: "center" },
-});

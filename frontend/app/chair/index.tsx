@@ -2,45 +2,29 @@ import React, { useEffect, useState } from "react";
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
+import { API_URL } from "@/constants/api";
 
-const API_URL = "http://127.0.0.1/myconference_project/backend";
+type User = { id_user: number; role: "author" | "reviewer" | "chair"; prenom?: string };
+type Conf = { id_conf: number; titre: string; description?: string; date_debut?: string; date_fin?: string };
 
-
-type Conf = {
-  id_conf: number;
-  titre: string;
-  description?: string;
-  date_debut?: string;
-  date_fin?: string;
-};
-
-type User = {
-  id_user: number;
-  role: "author" | "reviewer" | "chair";
-  prenom: string;
-};
-
-export default function ChairDashboard() {
+export default function ChairHome() {
   const router = useRouter();
-
   const [user, setUser] = useState<User | null>(null);
   const [confs, setConfs] = useState<Conf[]>([]);
   const [loading, setLoading] = useState(true);
-
-  const [stats, setStats] = useState<{ myConferences: number }>({ myConferences: 0 });
 
   const load = async () => {
     setLoading(true);
     try {
       const saved = await AsyncStorage.getItem("user");
-      if (!saved) return router.replace("/login");
+      if (!saved) return;
 
       const u = JSON.parse(saved) as User;
       setUser(u);
 
       if (u.role !== "chair") {
-        Alert.alert("Access denied", "This page is for Organizer/Chair only.");
-        return router.replace("/dashboard");
+        Alert.alert("Access denied", "Organizer only");
+        return;
       }
 
       const res = await fetch(`${API_URL}/api/chair_my_conferences.php`, {
@@ -50,10 +34,12 @@ export default function ChairDashboard() {
       });
 
       const data = await res.json();
-      if (!data.success) return Alert.alert("Erreur", data.message || "Failed");
-
-      setConfs(data.conferences || []);
-      setStats(data.stats || { myConferences: (data.conferences || []).length });
+      if (!data.success) {
+        Alert.alert("Erreur", data.message || "Failed to load conferences");
+        setConfs([]);
+      } else {
+        setConfs(data.conferences || []);
+      }
     } catch (e) {
       console.log(e);
       Alert.alert("Erreur", "Server not reachable");
@@ -62,120 +48,86 @@ export default function ChairDashboard() {
     }
   };
 
-  useEffect(() => {
-    load();
-  }, []);
-
-  if (!user) return null;
+  useEffect(() => { load(); }, []);
 
   return (
-    <ScrollView style={styles.container}>
-      {/* Header */}
+    <ScrollView style={styles.container} contentContainerStyle={{ padding: 16 }}>
       <View style={styles.header}>
-        <View>
-          <Text style={styles.title}>👩‍🏫 Organizer Dashboard</Text>
-          <Text style={styles.sub}>Welcome, {user.prenom} — manage your conferences</Text>
-        </View>
-
-        <TouchableOpacity style={styles.refreshBtn} onPress={load}>
-          <Text style={styles.refreshText}>Refresh</Text>
+        <Text style={styles.title}>🧑‍💼 Organizer Dashboard</Text>
+        <TouchableOpacity style={styles.btn} onPress={load}>
+          <Text style={styles.btnText}>Refresh</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Top Actions */}
-      <View style={styles.actionsRow}>
-  <TouchableOpacity
-    style={styles.primaryBtn}
-    onPress={() => router.push("/chair/create-conference" as any)}
-  >
-    <Text style={styles.primaryText}>➕ Create Conference</Text>
-  </TouchableOpacity>
+      <TouchableOpacity style={[styles.bigBtn, { marginTop: 14 }]} onPress={() => router.push("/chair/create-conference")}>
+        <Text style={styles.bigBtnText}>＋ Create Conference</Text>
+      </TouchableOpacity>
 
-  <TouchableOpacity
-    style={[styles.primaryBtn, { marginTop: 10 }]}
-    onPress={() => router.push("/chair/create-reviewer" as any)}
-  >
-    <Text style={styles.primaryText}>➕ Add Reviewer</Text>
-  </TouchableOpacity>
-</View>
+      <TouchableOpacity style={[styles.bigBtn, { marginTop: 10 }]} onPress={() => router.push("/chair/create-reviewer")}>
+        <Text style={styles.bigBtnText}>＋ Add Reviewer</Text>
+      </TouchableOpacity>
 
-      {/* Stats */}
-      <View style={styles.statsRow}>
-        <StatCard label="My Conferences" value={stats.myConferences} />
-        <StatCard label="Submissions" value={0} />
-        <StatCard label="Registrations" value={0} />
-      </View>
+      <Text style={styles.section}>My Conferences</Text>
 
-      {/* My Conferences */}
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>📌 My Conferences</Text>
+      {loading ? (
+        <Text style={styles.muted}>Loading...</Text>
+      ) : confs.length === 0 ? (
+        <Text style={styles.muted}>No conferences yet. Create your first one ✅</Text>
+      ) : (
+        confs.map((c) => (
+          <View key={c.id_conf} style={styles.card}>
+            <Text style={styles.cardTitle}>{c.titre}</Text>
+            <Text style={styles.muted}>ID: {c.id_conf}</Text>
 
-        {loading ? (
-          <Text style={styles.muted}>Loading...</Text>
-        ) : confs.length === 0 ? (
-          <Text style={styles.muted}>No conferences yet. Create your first one ✅</Text>
-        ) : (
-          confs.map((c) => (
-            <View key={c.id_conf} style={styles.confItem}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.confTitle}>{c.titre}</Text>
-                <Text style={styles.muted}>
-                  {c.date_debut || "?"} → {c.date_fin || "?"}
-                </Text>
-              </View>
+            <View style={styles.row}>
+              <TouchableOpacity
+                style={styles.smallBtn}
+                onPress={() => router.push(`/chair/conf/${c.id_conf}/submissions`)}
+              >
+                <Text style={styles.smallBtnText}>Submissions</Text>
+              </TouchableOpacity>
 
               <TouchableOpacity
-                style={styles.manageBtn}
-                onPress={() => router.push(`/chair/conf/${c.id_conf}` as any)}
+                style={styles.smallBtn}
+                onPress={() => router.push(`/chair/conf/${c.id_conf}/assign`)}
               >
-                <Text style={styles.manageText}>Manage</Text>
+                <Text style={styles.smallBtnText}>Assign</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.smallBtn}
+                onPress={() => router.push(`/chair/conf/${c.id_conf}/reviews`)}
+              >
+                <Text style={styles.smallBtnText}>Reviews</Text>
               </TouchableOpacity>
             </View>
-          ))
-        )}
-      </View>
+          </View>
+        ))
+      )}
 
       <View style={{ height: 30 }} />
     </ScrollView>
   );
 }
 
-function StatCard({ label, value }: { label: string; value: number }) {
-  return (
-    <View style={styles.statCard}>
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f5f7fa", padding: 16 },
+  container: { flex: 1, backgroundColor: "#f5f7fa" },
+  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  title: { fontSize: 20, fontWeight: "900" },
 
-  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
-  title: { fontSize: 22, fontWeight: "900" },
-  sub: { color: "#666", marginTop: 4 },
+  btn: { backgroundColor: "#111", paddingHorizontal: 12, paddingVertical: 10, borderRadius: 12 },
+  btnText: { color: "#fff", fontWeight: "900" },
 
-  refreshBtn: { backgroundColor: "#111", paddingHorizontal: 12, paddingVertical: 10, borderRadius: 12 },
-  refreshText: { color: "#fff", fontWeight: "800" },
+  bigBtn: { backgroundColor: "#ffbf00", padding: 14, borderRadius: 14, alignItems: "center" },
+  bigBtnText: { fontWeight: "900" },
 
-  actionsRow: { marginBottom: 12 },
-  primaryBtn: { backgroundColor: "#f4b400", padding: 14, borderRadius: 14 },
-  primaryText: { fontWeight: "900", textAlign: "center", color: "#111" },
+  section: { marginTop: 18, fontSize: 16, fontWeight: "900" },
+  muted: { color: "#666", marginTop: 10 },
 
-  statsRow: { flexDirection: "row", gap: 10, marginBottom: 12 },
-  statCard: { flex: 1, backgroundColor: "#fff", borderRadius: 16, padding: 14, borderWidth: 1, borderColor: "#eee" },
-  statValue: { fontSize: 20, fontWeight: "900" },
-  statLabel: { color: "#666", marginTop: 4, fontWeight: "700", fontSize: 12 },
+  card: { backgroundColor: "#fff", borderRadius: 16, padding: 14, borderWidth: 1, borderColor: "#eee", marginTop: 12 },
+  cardTitle: { fontSize: 15, fontWeight: "900", color: "#111" },
 
-  card: { backgroundColor: "#fff", borderRadius: 16, padding: 16, borderWidth: 1, borderColor: "#eee" },
-  cardTitle: { fontSize: 16, fontWeight: "900", marginBottom: 10 },
-
-  muted: { color: "#666" },
-
-  confItem: { flexDirection: "row", alignItems: "center", paddingVertical: 12, borderTopWidth: 1, borderTopColor: "#eee" },
-  confTitle: { fontWeight: "900", fontSize: 14 },
-
-  manageBtn: { backgroundColor: "#111", paddingHorizontal: 12, paddingVertical: 10, borderRadius: 12, marginLeft: 10 },
-  manageText: { color: "#fff", fontWeight: "900" },
+  row: { flexDirection: "row", gap: 8, marginTop: 12 },
+  smallBtn: { flex: 1, backgroundColor: "#111", padding: 10, borderRadius: 12, alignItems: "center" },
+  smallBtnText: { color: "#fff", fontWeight: "800", fontSize: 12 },
 });

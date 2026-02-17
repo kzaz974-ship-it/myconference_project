@@ -11,20 +11,25 @@ export default function ManageConference() {
       <Text style={styles.title}>⚙️ Manage Conference</Text>
       <Text style={styles.sub}>Conference ID: {id}</Text>
 
-      <TouchableOpacity style={styles.btn} onPress={() => alert("Next: submissions page ✅")}>
+      <TouchableOpacity
+        style={styles.btn}
+        onPress={() => router.push(`/chair/conf/${id}/submissions` as any)}
+      >
         <Text style={styles.btnText}>📄 Submissions</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.btn} onPress={() => alert("Next: assign reviewers ✅")}>
+      <TouchableOpacity
+        style={styles.btn}
+        onPress={() => router.push(`/chair/conf/${id}/assign` as any)}
+      >
         <Text style={styles.btnText}>👩‍⚖️ Assign Reviewers</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.btn} onPress={() => alert("Next: reviews & notes ✅")}>
-        <Text style={styles.btnText}>⭐ Reviews & Notes</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity style={styles.btn} onPress={() => alert("Next: registrations ✅")}>
-        <Text style={styles.btnText}>👥 Registrations</Text>
+      <TouchableOpacity
+        style={styles.btn}
+        onPress={() => router.push(`/chair/conf/${id}/reviews` as any)}
+      >
+        <Text style={styles.btnText}>⭐ Reviews & Decision</Text>
       </TouchableOpacity>
 
       <TouchableOpacity style={[styles.btn, styles.backBtn]} onPress={() => router.back()}>

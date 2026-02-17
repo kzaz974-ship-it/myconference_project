@@ -28,7 +28,6 @@ export default function CreateArticle() {
   const [title, setTitle] = useState("");
   const [abstract, setAbstract] = useState("");
 
-  // web pdf
   const [pdfFile, setPdfFile] = useState<File | null>(null);
 
   const [loadingConfs, setLoadingConfs] = useState(true);
@@ -37,20 +36,24 @@ export default function CreateArticle() {
   const loadConfs = async () => {
     setLoadingConfs(true);
     try {
-      // ✅ correct endpoint
-      const res = await fetch(`${API_URL}/api/conferences_list.php`, {
-        method: "GET",
-        headers: { Accept: "application/json" },
-      });
+      // ✅ use conferences_list.php
+      const res = await fetch(`${API_URL}/api/conferences_list.php`);
+      const text = await res.text();
 
-      const data = await res.json();
-
-      if (!data?.success) {
+      let data: any;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        console.log("Confs not JSON:", text);
         setConfs([]);
         return;
       }
 
-      const list = Array.isArray(data?.conferences) ? data.conferences : [];
+      const list = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.conferences)
+        ? data.conferences
+        : [];
 
       const cleaned: Conf[] = list
         .map((x: any) => ({
@@ -60,10 +63,7 @@ export default function CreateArticle() {
         .filter((x: Conf) => x.id_conf && x.titre);
 
       setConfs(cleaned);
-
-      // default select first
       if (cleaned.length > 0) setConfId(cleaned[0].id_conf);
-      else setConfId(null);
     } catch (e) {
       console.log(e);
       setConfs([]);
@@ -79,8 +79,7 @@ export default function CreateArticle() {
 
   const confLabel = useMemo(() => {
     if (!confId) return "—";
-    const c = confs.find((x) => x.id_conf === confId);
-    return c?.titre ?? "—";
+    return confs.find((x) => x.id_conf === confId)?.titre ?? "—";
   }, [confId, confs]);
 
   const submit = async () => {
@@ -88,7 +87,6 @@ export default function CreateArticle() {
     if (!title.trim()) return Alert.alert("Erreur", "Title required");
     if (!abstract.trim()) return Alert.alert("Erreur", "Abstract required");
 
-    // PDF only on web
     if (Platform.OS === "web" && !pdfFile) {
       return Alert.alert("Erreur", "Choisis un PDF");
     }
@@ -115,24 +113,23 @@ export default function CreateArticle() {
         body: fd as any,
       });
 
-      const text = await res.text();
-      let out: any = null;
-
+      const raw = await res.text();
+      let data: any;
       try {
-        out = JSON.parse(text);
+        data = JSON.parse(raw);
       } catch {
-        console.log("create article not json:", text);
+        console.log("create article not json:", raw);
         Alert.alert("Erreur", "Server response not JSON (check console)");
         return;
       }
 
-      if (!out.success) {
-        Alert.alert("Erreur", out.message || "Failed");
+      if (!data.success) {
+        Alert.alert("Erreur", data.message || "Failed");
         return;
       }
 
       Alert.alert("✅ Success", "Article submitted");
-      router.back();
+      router.replace("/articles/mine" as any);
     } catch (e) {
       console.log(e);
       Alert.alert("Erreur", "Server not reachable");
@@ -154,28 +151,16 @@ export default function CreateArticle() {
             <Text style={styles.muted}>Loading conferences...</Text>
           </View>
         ) : confs.length === 0 ? (
-          <Text style={styles.error}>
-            No conferences found. (Create a conference as Chair first)
-          </Text>
+          <Text style={styles.error}>No conferences found.</Text>
         ) : (
           <View>
             {confs.map((c) => (
               <TouchableOpacity
                 key={c.id_conf}
-                style={[
-                  styles.choice,
-                  confId === c.id_conf && styles.choiceActive,
-                ]}
+                style={[styles.choice, confId === c.id_conf && styles.choiceActive]}
                 onPress={() => setConfId(c.id_conf)}
               >
-                <Text
-                  style={[
-                    styles.choiceText,
-                    confId === c.id_conf && styles.choiceTextActive,
-                  ]}
-                >
-                  {c.titre}
-                </Text>
+                <Text style={styles.choiceText}>{c.titre}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -187,12 +172,7 @@ export default function CreateArticle() {
         <Text style={styles.selected}>{confLabel}</Text>
 
         <Text style={styles.label}>Title</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Article title"
-          value={title}
-          onChangeText={setTitle}
-        />
+        <TextInput style={styles.input} placeholder="Article title" value={title} onChangeText={setTitle} />
 
         <Text style={styles.label}>Abstract / Résumé</Text>
         <TextInput
@@ -209,25 +189,14 @@ export default function CreateArticle() {
             <input
               type="file"
               accept="application/pdf"
-              onChange={(e) => {
-                const f = e.target.files?.[0] ?? null;
-                setPdfFile(f);
-              }}
+              onChange={(e) => setPdfFile(e.target.files?.[0] ?? null)}
             />
-            {!!pdfFile && (
-              <Text style={styles.muted}>Selected: {pdfFile.name}</Text>
-            )}
+            {!!pdfFile && <Text style={styles.muted}>Selected: {pdfFile.name}</Text>}
           </View>
         )}
 
-        <TouchableOpacity
-          style={[styles.btn, submitting && { opacity: 0.6 }]}
-          onPress={submit}
-          disabled={submitting}
-        >
-          <Text style={styles.btnText}>
-            {submitting ? "Submitting..." : "Submit"}
-          </Text>
+        <TouchableOpacity style={[styles.btn, submitting && { opacity: 0.6 }]} onPress={submit} disabled={submitting}>
+          <Text style={styles.btnText}>{submitting ? "Submitting..." : "Submit"}</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
@@ -237,50 +206,15 @@ export default function CreateArticle() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f5f7fa" },
   title: { fontSize: 24, fontWeight: "900", marginBottom: 12 },
-
-  card: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: "#eee",
-    marginBottom: 12,
-  },
-
+  card: { backgroundColor: "#fff", borderRadius: 16, padding: 16, borderWidth: 1, borderColor: "#eee", marginBottom: 12 },
   label: { fontWeight: "800", marginBottom: 8 },
-  input: {
-    backgroundColor: "#fff",
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 12,
-  },
-
-  btn: {
-    backgroundColor: "#111",
-    padding: 14,
-    borderRadius: 12,
-    marginTop: 8,
-  },
+  input: { backgroundColor: "#fff", borderWidth: 1, borderColor: "#ddd", borderRadius: 12, padding: 12, marginBottom: 12 },
+  btn: { backgroundColor: "#111", padding: 14, borderRadius: 12, marginTop: 8 },
   btnText: { color: "#fff", textAlign: "center", fontWeight: "900" },
-
   muted: { color: "#666", marginTop: 6 },
   error: { color: "crimson", fontWeight: "700" },
-
   selected: { marginBottom: 12, color: "#111", fontWeight: "700" },
-
-  choice: {
-    padding: 12,
-    borderRadius: 12,
-    backgroundColor: "#f2f2f2",
-    marginBottom: 10,
-  },
-  choiceActive: {
-    backgroundColor: "#E8F0FE",
-    borderWidth: 1,
-    borderColor: "#4285F4",
-  },
+  choice: { padding: 12, borderRadius: 12, backgroundColor: "#f2f2f2", marginBottom: 10 },
+  choiceActive: { backgroundColor: "#E8F0FE", borderWidth: 1, borderColor: "#4285F4" },
   choiceText: { fontWeight: "700", color: "#111" },
-  choiceTextActive: { color: "#111" },
 });
