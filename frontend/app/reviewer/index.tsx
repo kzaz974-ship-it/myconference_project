@@ -1,10 +1,20 @@
 import React, { useEffect, useState } from "react";
-import { Alert, ScrollView, Text, TouchableOpacity, View, Linking } from "react-native";
+import {
+  Alert,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+  Linking,
+} from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import { API_URL } from "@/constants/api";
 
-type User = { id_user: number; role: "author" | "reviewer" | "chair" };
+type User = {
+  id_user: number;
+  role: "author" | "reviewer" | "chair";
+};
 
 type Assignment = {
   id_assignment: number;
@@ -24,7 +34,6 @@ type Assignment = {
   author_email: string;
 
   fichier_pdf: string | null;
-  pdf_url: string | null;
 };
 
 export default function ReviewerDashboard() {
@@ -33,11 +42,13 @@ export default function ReviewerDashboard() {
 
   const load = async () => {
     setLoading(true);
+
     try {
       const saved = await AsyncStorage.getItem("user");
       if (!saved) return;
 
       const u = JSON.parse(saved) as User;
+
       if (u.role !== "reviewer") {
         Alert.alert("Access denied", "Reviewer only");
         return;
@@ -45,11 +56,16 @@ export default function ReviewerDashboard() {
 
       const res = await fetch(`${API_URL}/api/reviewer_assignments.php`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reviewerId: u.id_user }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          reviewerId: u.id_user,
+        }),
       });
 
       const data = await res.json();
+
       if (!data.success) {
         Alert.alert("Erreur", data.message || "Failed");
         setItems([]);
@@ -64,26 +80,60 @@ export default function ReviewerDashboard() {
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+  }, []);
 
-  const openPdf = async (url: string | null) => {
-    if (!url) {
+  // فتح PDF
+  const openPdf = async (fileName: string | null) => {
+    if (!fileName) {
       Alert.alert("PDF", "No PDF for this article");
       return;
     }
-    const ok = await Linking.canOpenURL(url);
-    if (!ok) {
-      Alert.alert("PDF", "Cannot open PDF URL");
-      return;
+
+    const pdfUrl = `${API_URL}/uploads/articles/${encodeURIComponent(
+      fileName
+    )}`;
+
+    try {
+      const supported = await Linking.canOpenURL(pdfUrl);
+
+      if (!supported) {
+        Alert.alert("Error", "Cannot open PDF");
+        return;
+      }
+
+      await Linking.openURL(pdfUrl);
+    } catch (e) {
+      console.log("PDF open error:", e);
+      Alert.alert("PDF", "Unable to open PDF");
     }
-    Linking.openURL(url);
   };
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: "#f5f7fa" }} contentContainerStyle={{ padding: 16 }}>
-      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-        <Text style={{ fontSize: 22, fontWeight: "900" }}>📚 Reviewer Dashboard</Text>
-        <TouchableOpacity onPress={load} style={{ backgroundColor: "#111", padding: 10, borderRadius: 12 }}>
+    <ScrollView
+      style={{ flex: 1, backgroundColor: "#f5f7fa" }}
+      contentContainerStyle={{ padding: 16 }}
+    >
+      <View
+        style={{
+          flexDirection: "row",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <Text style={{ fontSize: 22, fontWeight: "900" }}>
+          📚 Reviewer Dashboard
+        </Text>
+
+        <TouchableOpacity
+          onPress={load}
+          style={{
+            backgroundColor: "#111",
+            padding: 10,
+            borderRadius: 12,
+          }}
+        >
           <Text style={{ color: "white", fontWeight: "900" }}>Refresh</Text>
         </TouchableOpacity>
       </View>
@@ -91,7 +141,9 @@ export default function ReviewerDashboard() {
       {loading ? (
         <Text style={{ marginTop: 14, color: "#666" }}>Loading...</Text>
       ) : items.length === 0 ? (
-        <Text style={{ marginTop: 14, color: "#666" }}>No assigned articles yet.</Text>
+        <Text style={{ marginTop: 14, color: "#666" }}>
+          No assigned articles yet.
+        </Text>
       ) : (
         items.map((a) => (
           <View
@@ -105,35 +157,55 @@ export default function ReviewerDashboard() {
               borderColor: "#eee",
             }}
           >
-            <Text style={{ fontWeight: "900", fontSize: 16 }}>{a.titre}</Text>
+            <Text style={{ fontWeight: "900", fontSize: 16 }}>
+              {a.titre}
+            </Text>
 
             <Text style={{ marginTop: 8, color: "#666" }}>
-              Conference: <Text style={{ fontWeight: "800", color: "#111" }}>{a.conf_titre}</Text>
+              Conference:{" "}
+              <Text style={{ fontWeight: "800", color: "#111" }}>
+                {a.conf_titre}
+              </Text>
             </Text>
 
             <Text style={{ marginTop: 6, color: "#666" }}>
-              Author: <Text style={{ fontWeight: "800", color: "#111" }}>
+              Author:{" "}
+              <Text style={{ fontWeight: "800", color: "#111" }}>
                 {a.author_prenom} {a.author_nom}
               </Text>{" "}
               ({a.author_email})
             </Text>
 
-            <Text style={{ marginTop: 6, color: "#666" }}>Assigned at: {a.assigned_at}</Text>
-            <Text style={{ marginTop: 6, color: "#666" }}>Assignment status: {a.assignment_status}</Text>
-            <Text style={{ marginTop: 6, color: "#666" }}>Article status: {a.statut}</Text>
+            <Text style={{ marginTop: 6, color: "#666" }}>
+              Assigned at: {a.assigned_at}
+            </Text>
 
-            <View style={{ flexDirection: "row", gap: 10, marginTop: 14 }}>
+            <Text style={{ marginTop: 6, color: "#666" }}>
+              Assignment status: {a.assignment_status}
+            </Text>
+
+            <Text style={{ marginTop: 6, color: "#666" }}>
+              Article status: {a.statut}
+            </Text>
+
+            <View
+              style={{
+                flexDirection: "row",
+                gap: 10,
+                marginTop: 14,
+              }}
+            >
               <TouchableOpacity
-                onPress={() => openPdf(a.pdf_url)}
+                onPress={() => openPdf(a.fichier_pdf)}
                 style={{
-                  backgroundColor: a.pdf_url ? "#0b5" : "#aaa",
+                  backgroundColor: a.fichier_pdf ? "#0b5" : "#aaa",
                   paddingVertical: 10,
                   paddingHorizontal: 14,
                   borderRadius: 12,
                 }}
               >
                 <Text style={{ color: "white", fontWeight: "900" }}>
-                  {a.pdf_url ? "Open PDF" : "No PDF"}
+                  {a.fichier_pdf ? "Open PDF" : "No PDF"}
                 </Text>
               </TouchableOpacity>
 
@@ -151,7 +223,9 @@ export default function ReviewerDashboard() {
                   borderRadius: 12,
                 }}
               >
-                <Text style={{ color: "white", fontWeight: "900" }}>✍️ Review</Text>
+                <Text style={{ color: "white", fontWeight: "900" }}>
+                  ✍️ Review
+                </Text>
               </TouchableOpacity>
             </View>
           </View>

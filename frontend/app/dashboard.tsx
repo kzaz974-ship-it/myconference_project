@@ -71,7 +71,6 @@ export default function Dashboard() {
     }
   };
 
-  // ✅ خليه غير هنا (باش يتعاود load كل مرة كترجعي للداشبورد)
   useFocusEffect(
     useCallback(() => {
       load();
@@ -169,13 +168,32 @@ export default function Dashboard() {
               </Text>
             </TouchableOpacity>
 
-            {/* اختياري: shortcut ل create reviewer */}
             <TouchableOpacity
               style={[styles.actionBtn, { backgroundColor: "#444" }]}
               onPress={() => router.push("/chair/create-reviewer" as any)}
             >
               <Text style={[styles.actionText, { color: "#fff" }]}>
                 ➕ Create Reviewer
+              </Text>
+            </TouchableOpacity>
+
+            {/* ✅ Go to Reviews page */}
+            <TouchableOpacity
+              style={[styles.actionBtn, { backgroundColor: "#2d6cdf" }]}
+              onPress={() => router.push("/chair/reviews" as any)}
+            >
+              <Text style={[styles.actionText, { color: "#fff" }]}>
+                📋 View Reviews
+              </Text>
+            </TouchableOpacity>
+
+            {/* ✅ Go to Authors page */}
+            <TouchableOpacity
+              style={[styles.actionBtn, { backgroundColor: "#1e88e5" }]}
+              onPress={() => router.push("/chair/authors" as any)}
+            >
+              <Text style={[styles.actionText, { color: "#fff" }]}>
+                👤 View Authors
               </Text>
             </TouchableOpacity>
           </>
@@ -193,7 +211,6 @@ export default function Dashboard() {
               </Text>
             </TouchableOpacity>
 
-            {/* shortcut ل write reviews */}
             <TouchableOpacity
               style={[styles.actionBtn, { backgroundColor: "#1e88e5" }]}
               onPress={() => router.push("/reviewer" as any)}
