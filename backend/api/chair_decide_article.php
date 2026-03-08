@@ -9,38 +9,55 @@ if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") {
   exit();
 }
 
-require_once __DIR__ . "/../config/db.php"; // تأكد path ديال db.php عندك صحيح
+require_once __DIR__ . "/../config/db.php";
 
-$raw = file_get_contents("php://input");
-$body = json_decode($raw, true);
+if ($_SERVER["REQUEST_METHOD"] !== "POST") {
+  http_response_code(405);
+  echo json_encode(["success" => false, "message" => "Method not allowed"]);
+  exit();
+}
 
-$articleId = isset($body["articleId"]) ? intval($body["articleId"]) : 0;
-$decision  = isset($body["decision"]) ? trim($body["decision"]) : "";
+$data = json_decode(file_get_contents("php://input"), true);
 
-if ($articleId <= 0 || !in_array($decision, ["accepte", "rejete"])) {
-  echo json_encode(["success" => false, "message" => "Invalid articleId or decision"]);
+$userId = intval($data["userId"] ?? 0);       // chair id
+$articleId = intval($data["articleId"] ?? 0);
+$decision = trim($data["decision"] ?? "");    // accepte | rejete
+
+if ($userId <= 0 || $articleId <= 0 || !in_array($decision, ["accepte", "rejete"])) {
+  http_response_code(400);
+  echo json_encode(["success" => false, "message" => "Invalid data"]);
   exit();
 }
 
 try {
-  // 1) update article status
-  $stmt = $pdo->prepare("UPDATE articles SET statut = ? WHERE id_article = ?");
-  $stmt->execute([$decision, $articleId]);
+  // تحقق من chair
+  $st = $pdo->prepare("SELECT role FROM users WHERE id_user=?");
+  $st->execute([$userId]);
+  $u = $st->fetch(PDO::FETCH_ASSOC);
 
-  // 2) (اختياري) update assignments to reviewed
-  $stmt2 = $pdo->prepare("UPDATE assignments SET status = 'reviewed' WHERE id_article = ?");
-  $stmt2->execute([$articleId]);
+  if (!$u || $u["role"] !== "chair") {
+    http_response_code(403);
+    echo json_encode(["success" => false, "message" => "Organizer only"]);
+    exit();
+  }
 
-  // 3) return updated article
-  $stmt3 = $pdo->prepare("SELECT id_article, titre, statut, id_author, id_conf FROM articles WHERE id_article = ?");
-  $stmt3->execute([$articleId]);
-  $article = $stmt3->fetch(PDO::FETCH_ASSOC);
+  // update article
+  $stmt = $pdo->prepare("
+    UPDATE articles
+    SET statut = ?, final_decision_by = ?, final_decision_at = NOW()
+    WHERE id_article = ?
+  ");
+  $stmt->execute([$decision, $userId, $articleId]);
 
   echo json_encode([
     "success" => true,
-    "message" => "Article updated",
-    "article" => $article
+    "message" => $decision === "accepte" ? "Article accepted" : "Article rejected"
   ]);
 } catch (Exception $e) {
-  echo json_encode(["success" => false, "message" => $e->getMessage()]);
+  http_response_code(500);
+  echo json_encode([
+    "success" => false,
+    "message" => "Server error",
+    "error" => $e->getMessage()
+  ]);
 }

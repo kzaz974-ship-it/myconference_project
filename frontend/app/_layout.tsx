@@ -17,6 +17,7 @@ export default function RootLayout() {
       <Stack.Screen name="chair/index" options={{ title: "Organizer" }} />
       <Stack.Screen name="chair/reviews" options={{ title: "Reviews" }} />
       <Stack.Screen name="chair/authors" options={{ title: "Authors" }} />
+      <Stack.Screen name="author/certificates" options={{ title: "My Certificates" }} />
       <Stack.Screen
         name="chair/create-conference"
         options={{ title: "Create Conference" }}

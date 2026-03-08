@@ -153,6 +153,12 @@ export default function Dashboard() {
             >
               <Text style={styles.actionText}>🟢 View My Submissions</Text>
             </TouchableOpacity>
+            <TouchableOpacity
+  style={styles.actionBtn}
+  onPress={() => router.push("/author/certificates" as any)}
+>
+  <Text style={styles.actionText}>🏆 My Certificates</Text>
+</TouchableOpacity>
           </>
         )}
 
